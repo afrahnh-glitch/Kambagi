@@ -1,0 +1,2 @@
+id,section,skill,stem,passage,option_a,option_b,option_c,option_d,answer,explanation,explanation_source,source_id,page,number,status
+TJ-EXAMPLE-0001,verbal,analogy,"نص السؤال كما في الملف",,"الخيار أ","الخيار ب","الخيار ج","الخيار د",b,"شرح الحل إن وُجد",source,tj-1447-verbal-a,12,34,review

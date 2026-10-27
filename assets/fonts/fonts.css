@@ -1,0 +1,13 @@
+/*
+ * خط Tajawal (رخصة مفتوحة OFL) — اختياري.
+ * لتفعيله: نزّلي ملفات الخط من Google Fonts (Tajawal) وضعيها في هذا المجلد بالأسماء:
+ * Tajawal-Regular.ttf, Tajawal-Medium.ttf, Tajawal-Bold.ttf, Tajawal-ExtraBold.ttf
+ * ثم احذفي علامتي التعليق /* و */ حول الأسطر أدناه.
+ * بدون هذه الملفات تستخدم الأداة خط النظام العربي في الجوال والآيباد تلقائيًا.
+ */
+/*
+@font-face { font-family: 'Tajawal'; font-weight: 400; font-display: swap; src: url('Tajawal-Regular.ttf') format('truetype'); }
+@font-face { font-family: 'Tajawal'; font-weight: 500; font-display: swap; src: url('Tajawal-Medium.ttf') format('truetype'); }
+@font-face { font-family: 'Tajawal'; font-weight: 700; font-display: swap; src: url('Tajawal-Bold.ttf') format('truetype'); }
+@font-face { font-family: 'Tajawal'; font-weight: 800; font-display: swap; src: url('Tajawal-ExtraBold.ttf') format('truetype'); }
+*/
