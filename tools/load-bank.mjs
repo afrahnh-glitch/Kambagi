@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const DATA_FILES = ['config.js', 'data/skills.js', 'data/sources.js', 'data/bank-tajmeeat.js', 'data/bank-tajmeeat-mufakker.js', 'data/bank-original.js'];
+export const DATA_FILES = ['config.js', 'data/skills.js', 'data/sources.js', 'data/bank-tajmeeat.js', 'data/bank-tajmeeat-mufakker.js', 'data/bank-tajmeeat-kanan.js', 'data/bank-original.js'];
 
 export function loadAll(extraFiles = []) {
   const window = {};

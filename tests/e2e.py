@@ -69,7 +69,7 @@ def run(device, prefix):
         tj = page.locator('[data-pool="tajmeeat"]')
         check(tj.get_attribute('aria-disabled') == 'false', 'التجميعات متاحة')
         check(tj.get_attribute('aria-checked') == 'true', 'التجميعات مختارة افتراضيًا')
-        check('القسم اللفظي من الأسئلة التدريبية الأصلية' in tj.inner_text(), 'توضيح مصدر القسم اللفظي')
+        check('القسم اللفظي من التجميعات' in tj.inner_text() and 'القسم الكمي من التجميعات' in tj.inner_text(), 'توضيح مصدر القسمين')
         common(page, 'بيانات الاختبار')
         page.screenshot(path=f'{SHOTS}/{prefix}-02-start.png', full_page=True)
         page.click('#go')
@@ -85,7 +85,7 @@ def run(device, prefix):
         check('السؤال 1 من 24' in txt, 'رقم السؤال والعدد الكلي')
         check('من التجميعات' in txt, 'شارة مصدر السؤال')
         pools = page.evaluate("(()=>{const m=Object.fromEntries(window.QB.questions.map(q=>[q.id,q.pool+'/'+q.section]));return JSON.parse(localStorage.getItem('kbh-v1')).attempt.questionIds.map(i=>m[i]);})()")
-        check(all(x in ('tajmeeat/quant','original/verbal') for x in pools), 'الكمي من التجميعات واللفظي من الأصلية')
+        check(all(x.startswith('tajmeeat/') for x in pools) and pools.count('tajmeeat/verbal') == 12, 'القسمان من التجميعات')
         common(page, 'شاشة الأسئلة')
         page.screenshot(path=f'{SHOTS}/{prefix}-03-question.png', full_page=True)
 
@@ -153,6 +153,7 @@ def run(device, prefix):
         check(page.locator('.ans-opts li.correct').count() == 24, 'إجابة صحيحة لكل سؤال')
         check(page.locator('.src-line').count() == 24, 'مصدر لكل سؤال')
         check(page.locator('.src-line', has_text='بنوك المفكر').count() == 12, 'مرجع المفكر في الأسئلة الكمية')
+        check(page.locator('.src-line', has_text='الفزعة').count() == 12 and page.locator('.src-line', has_text='مركز كنان').count() == 12, 'مرجع كنان في الأسئلة اللفظية')
         imgs = page.evaluate("Promise.all([...document.querySelectorAll('.q-fig img')].map(i=>new Promise(r=>{const x=new Image();x.onload=()=>r([x.naturalWidth>0,i.getAttribute('src')]);x.onerror=()=>r([false,i.getAttribute('src')]);x.src=i.src;})))")
         check(all(ok for ok, _ in imgs), f'صور لم تُحمّل: {[s for ok, s in imgs if not ok]}')
         page.click('[data-f="skip"]')
@@ -250,7 +251,8 @@ def run_no_bank():
         b.close()
     with sync_playwright() as p:
         b = p.chromium.launch(); page = b.new_page()
-        page.route('**/data/bank-original.js', lambda r: r.fulfill(body='', content_type='application/javascript'))
+        for f in ('bank-original', 'bank-tajmeeat-mufakker', 'bank-tajmeeat-kanan'):
+            page.route(f'**/data/{f}.js', lambda r: r.fulfill(body='', content_type='application/javascript'))
         page.goto(BASE + '#/start'); page.wait_for_timeout(500)
         check('غير متاح حاليًا' in page.locator('main').inner_text(), 'رسالة عدم توفر أسئلة كافية')
         b.close()

@@ -26,7 +26,7 @@ window.QB.skills = {
   completion: { section: 'verbal', label: 'إكمال الجمل' },
   contextual: { section: 'verbal', label: 'الخطأ السياقي' },
   reading:    { section: 'verbal', label: 'استيعاب المقروء' },
-  vocabulary: { section: 'verbal', label: 'المفردات والعلاقات اللفظية' }
+  vocabulary: { section: 'verbal', label: 'المفردة الشاذة' }
 };
 
 // الخيارات الثابتة لأسئلة المقارنة الكمية

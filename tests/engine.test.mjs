@@ -53,17 +53,32 @@ test('الاختبار القصير والشامل: العدد صحيح، متو
   }
 });
 
-test('التجميعات للكمي والأصلية للفظي عند عدم توفر تجميعات لفظية', () => {
+test('القسمان من التجميعات بعد إضافة التجميعات اللفظية', () => {
   const sp = E.sectionPools(bank, 'tajmeeat', config);
-  same(sp, { quant: 'tajmeeat', verbal: 'original' });
+  same(sp, { quant: 'tajmeeat', verbal: 'tajmeeat' });
   for (let seed = 1; seed <= 100; seed++) {
     const a = E.buildAttempt(bank, config, { pool: 'tajmeeat', lengthKey: seed % 2 ? 'short' : 'full', seed });
     const qs = a.questionIds.map(id => byId[id]);
-    assert.ok(qs.filter(q => q.section === 'quant').every(q => q.pool === 'tajmeeat'));
-    assert.ok(qs.filter(q => q.section === 'verbal').every(q => q.pool === 'original'));
+    assert.ok(qs.every(q => q.pool === 'tajmeeat'));
+    assert.equal(qs.filter(q => q.section === 'verbal').length, config.testLengths[seed % 2 ? 'short' : 'full'].verbal);
     assert.equal(new Set(a.questionIds).size, a.questionIds.length);
     const counts = {}; qs.forEach(q => { counts[q.skill] = (counts[q.skill] || 0) + 1; });
     Object.values(counts).forEach(n => assert.ok(n >= 3));
+    // أسئلة القطعة الواحدة متجاورة
+    const pidx = {};
+    qs.forEach((q, i) => { if (q.passageId) (pidx[q.passageId] = pidx[q.passageId] || []).push(i); });
+    Object.values(pidx).forEach(ix => assert.equal(ix[ix.length - 1] - ix[0], ix.length - 1));
+  }
+});
+
+test('الرجوع إلى الأسئلة الأصلية للقسم الذي تنقصه التجميعات', () => {
+  const noVerbalTj = Object.assign({}, bank, { questions: bank.questions.filter(q => !(q.pool === 'tajmeeat' && q.section === 'verbal')) });
+  same(E.sectionPools(noVerbalTj, 'tajmeeat', config), { quant: 'tajmeeat', verbal: 'original' });
+  for (let seed = 1; seed <= 30; seed++) {
+    const a = E.buildAttempt(noVerbalTj, config, { pool: 'tajmeeat', lengthKey: 'short', seed });
+    const qs = a.questionIds.map(id => byId[id]);
+    assert.ok(qs.filter(q => q.section === 'quant').every(q => q.pool === 'tajmeeat'));
+    assert.ok(qs.filter(q => q.section === 'verbal').every(q => q.pool === 'original'));
   }
   // مصدر أصلي فقط لا يخلط التجميعات
   const b = E.buildAttempt(bank, config, { pool: 'original', lengthKey: 'full', seed: 9 });
