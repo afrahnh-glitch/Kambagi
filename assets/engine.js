@@ -1,5 +1,5 @@
 /*
- * محرك «كم باقي على هدفك؟»: سحب الأسئلة، التصحيح، التحليل، والخطة المجانية.
+ * محرك «كم باقي على هدفك؟»: سحب الأسئلة، التصحيح، التحليل، والخطة المختصرة والتفصيلية.
  * منطق برمجي خالص بلا واجهة، يعمل في المتصفح وفي Node للاختبارات.
  */
 (function (root, factory) {
@@ -277,7 +277,7 @@
     return Math.round((b - a) / 86400000);
   }
 
-  // ---------- الخطة المجانية ----------
+  // ---------- الخطة المختصرة ----------
   const WEEKDAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
   function validateProfile(p, today) {
@@ -470,9 +470,221 @@
     };
   }
 
+  // ---------- الخطة التفصيلية اليومية ----------
+  const SKILL_TIPS = {
+    ratio: 'حوّل النسبة إلى أجزاء: اقسم المعلوم على عدد أجزائه، ثم اضرب في الأجزاء المطلوبة.',
+    percent: 'احفظ المكافئات الشائعة (25% = ربع، 20% = خمس، 12.5% = ثمن)، واحسب نسبة التغير دائمًا من القيمة الأصلية.',
+    average: 'المجموع = المتوسط × العدد؛ أغلب مسائل المتوسطات تُحل بالمجموع لا بالمتوسط.',
+    arithmetic: 'قدّر الناتج تقريبيًا قبل الحساب لتستبعد الخيارات البعيدة بسرعة.',
+    algebra: 'إذا تعقّدت المعادلة جرّب التعويض بالخيارات، وانتبه لإشارة السالب عند فك الأقواس.',
+    geometry: 'اكتب المعطيات على الرسم، واحفظ مجموع زوايا المثلث (180) والرباعي (360) وثلاثيات فيثاغورس (3، 4، 5) و(5، 12، 13).',
+    stats: 'الاحتمال = الحالات المطلوبة ÷ الحالات الكلية، ورتّب البيانات تصاعديًا قبل إيجاد الوسيط.',
+    speed: 'المسافة = السرعة × الزمن؛ في الاتجاهين المتعاكسين اجمع السرعتين، وفي الاتجاه نفسه اطرحهما.',
+    comparison: 'جرّب قيمًا مختلفة (موجبة، سالبة، كسور، صفر)؛ إذا تغيّرت نتيجة المقارنة فالمعطيات غير كافية.',
+    patterns: 'ابحث عن الفرق بين الحدود، ثم فرق الفروق، ثم الضرب، ثم جمع الحدين السابقين.',
+    analogy: 'كوّن جملة قصيرة تربط الكلمتين، ثم طبّق الجملة نفسها على كل خيار.',
+    completion: 'انتبه لأدوات الربط (لكن، رغم، لذلك)؛ فهي تحدد هل الفراغ يوافق السياق أو يعاكسه.',
+    contextual: 'حدّد الفكرة العامة للجملة أولًا، ثم ابحث عن الكلمة التي تناقضها.',
+    reading: 'اقرأ السؤال قبل النص، وابحث عن الدليل داخل النص ولا تعتمد على معلوماتك الخارجية.',
+    vocabulary: 'تعلّم الكلمات في جمل لا منفردة، وراجع المترادفات والأضداد الشائعة يوميًا.'
+  };
+  const PHASES = {
+    foundation: 'تأسيس',
+    practice: 'تدريب مكثف',
+    simulation: 'محاكاة ومراجعة',
+    review: 'مراجعة خفيفة'
+  };
+  // أيام المذاكرة المفضلة: من الأحد إلى الخميس، ثم السبت، ثم الجمعة
+  const STUDY_DAY_ORDER = [0, 1, 2, 3, 4, 6, 5];
+
+  function addDaysISO(iso, n) {
+    const d = new Date(parseISODate(iso) + n * 86400000);
+    const p = x => String(x).padStart(2, '0');
+    return d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate());
+  }
+  function weekdayOf(iso) { return new Date(parseISODate(iso)).getUTCDay(); }
+
+  function generateDetailedPlan(result, profile, opts) {
+    const today = opts.today;
+    const base = generatePlan(result, profile, opts);
+    const maxDays = opts.maxDays || 56;
+    const daysLeft = base.daysLeft;
+    const horizon = Math.min(daysLeft, maxDays);
+    const truncated = daysLeft > maxDays;
+    const dailyMin = base.dailyMin;
+    const perWeek = base.daysPerWeek;
+    const allSkills = opts.skills || {};
+
+    // أوزان المهارات: الضعيفة أكثر، وغير المقاسة بقدر متوسط، والجيدة للمحافظة
+    const weights = { quant: {}, verbal: {} };
+    Object.keys(allSkills).forEach(k => { const s = allSkills[k].section; if (weights[s]) weights[s][k] = 1; });
+    result.skills.forEach(s => {
+      weights[s.section] = weights[s.section] || {};
+      weights[s.section][s.key] = s.status === 'needs' ? (s.pct < 0.34 ? 4 : 3) : s.status === 'insufficient' ? 2 : 1;
+    });
+    const labelOf = k => (allSkills[k] && allSkills[k].label) || (result.skills.find(s => s.key === k) || {}).label || k;
+    const rr = { quant: {}, verbal: {} };
+    function nextSkill(sec) {
+      const w = weights[sec], keys = Object.keys(w);
+      if (!keys.length) return null;
+      let total = 0, best = null;
+      keys.forEach(k => { rr[sec][k] = (rr[sec][k] || 0) + w[k]; total += w[k]; if (best === null || rr[sec][k] > rr[sec][best]) best = k; });
+      rr[sec][best] -= total;
+      return best;
+    }
+
+    // تحديد أيام المذاكرة
+    const dates = [];
+    for (let i = 0; i < horizon; i++) dates.push(addDaysISO(today, i));
+    let isStudy;
+    if (base.mode === 'intense') {
+      const k = Math.min(perWeek, daysLeft);
+      isStudy = (d, i) => i >= horizon - k;
+    } else {
+      const studyWeekdays = new Set(STUDY_DAY_ORDER.slice(0, perWeek));
+      // اليوم السابق للاختبار مراجعة خفيفة دائمًا، حتى لو كان يوم راحة
+      isStudy = (d, i) => studyWeekdays.has(weekdayOf(d)) || (!truncated && i === daysLeft - 1);
+    }
+    const studyIdx = [];
+    dates.forEach((d, i) => { if (isStudy(d, i)) studyIdx.push(i); });
+    // كل أيام المذاكرة حتى الاختبار (لتحديد المرحلة حتى لو اقتُطع العرض)
+    let totalStudyUntilExam = studyIdx.length;
+    if (truncated) {
+      totalStudyUntilExam = 0;
+      const sw = new Set(STUDY_DAY_ORDER.slice(0, perWeek));
+      for (let i = 0; i < daysLeft; i++) if (sw.has(weekdayOf(addDaysISO(today, i)))) totalStudyUntilExam++;
+    }
+
+    function phaseFor(n) {
+      const f = totalStudyUntilExam ? n / totalStudyUntilExam : 1;
+      if (base.mode === 'intense') return 'simulation';
+      if (base.mode === 'focused') return f < 0.6 ? 'practice' : 'simulation';
+      return f < 0.4 ? 'foundation' : f < 0.8 ? 'practice' : 'simulation';
+    }
+    // تقدير واقعي يشمل التفكير والتحقق: دقيقة ونصف للسؤال الكمي ودقيقة للفظي
+    const qCount = (sec, min) => Math.max(5, Math.round(min / (sec === 'verbal' ? 1 : 1.5)));
+    const secLabel = { quant: 'الكمي', verbal: 'اللفظي', mixed: 'الكمي واللفظي' };
+
+    const split = base.split.quant;
+    let qn = 0, vn = 0;
+    const firstSec = profile.startPref === 'verbal' ? 'verbal' : profile.startPref === 'quant' ? 'quant'
+      : ((result.sections.quant ? result.sections.quant.pct : 0.5) <= (result.sections.verbal ? result.sections.verbal.pct : 0.5) ? 'quant' : 'verbal');
+    function pickSection(n) {
+      if (n === 0) return firstSec;
+      const dq = split * (n + 1) - qn, dv = (1 - split) * (n + 1) - vn;
+      return dq >= dv ? 'quant' : 'verbal';
+    }
+
+    const days = [];
+    let n = 0, totalMinutes = 0, totalQuestions = 0, testDays = 0, sinceTest = 0;
+    const skillSessions = {};
+    dates.forEach((date, i) => {
+      const wd = weekdayOf(date);
+      if (!studyIdx.includes(i)) { days.push({ date, weekday: WEEKDAYS[wd], type: 'rest', title: 'راحة', tasks: [] }); return; }
+      const phase = phaseFor(n);
+      const isLastBeforeExam = !truncated && i === daysLeft - 1;
+      let day;
+      if (isLastBeforeExam && studyIdx.length > 1) {
+        const m = Math.min(dailyMin, 60);
+        day = { type: 'study', phase: 'review', section: 'mixed', title: 'مراجعة خفيفة قبل الاختبار', minutes: m, tasks: [
+          { text: 'راجع دفتر أخطائك والقواعد المختصرة فقط، ولا تبدأ موضوعًا جديدًا', minutes: round5(m * 0.7) },
+          { text: 'جهّز أغراض الاختبار وتأكد من موعده ومكانه، ونم مبكرًا', minutes: round5(m * 0.3) }
+        ] };
+      } else {
+        const testEvery = phase === 'simulation' ? 3 : 7;
+        const isTest = (base.mode === 'intense' ? (studyIdx.length >= 3 && n === Math.floor((studyIdx.length - 1) / 2)) : (sinceTest >= testEvery - 1));
+        if (isTest) {
+          testDays++; sinceTest = 0;
+          const full = phase === 'simulation';
+          const m1 = round5(dailyMin * 0.6), m2 = round5(dailyMin * 0.4);
+          day = { type: 'study', phase, section: 'mixed', isTest: true,
+            title: full ? 'اختبار تدريبي كامل بوقت محدد' : 'اختبار قياس التقدم',
+            minutes: dailyMin, tasks: [
+              { text: full ? 'حل اختبارًا تدريبيًا كاملًا (كمي ولفظي) بوقت محدد ودون توقف' : 'أعد اختبار تحديد المستوى (الشامل) في هذه الأداة', minutes: m1 },
+              { text: 'قارن نتيجتك بالسابقة، وحدّد مهارتين تركّز عليهما في الأيام القادمة', minutes: m2 }
+            ] };
+        } else {
+          sinceTest++;
+          const sec = pickSection(n);
+          if (sec === 'quant') qn++; else vn++;
+          const sk = nextSkill(sec) || null;
+          const label = sk ? labelOf(sk) : 'مهارات القسم ' + secLabel[sec];
+          skillSessions[sk] = (skillSessions[sk] || 0) + 1;
+          let tasks;
+          if (phase === 'foundation') {
+            const a = round5(dailyMin * 0.35), b = round5(dailyMin * 0.45), c = round5(dailyMin * 0.2);
+            tasks = [
+              { text: `افهم أساسيات «${label}» وطريقة حلها المختصرة`, minutes: a },
+              { text: `حل أسئلة على «${label}» دون وقت، وركّز على الطريقة لا السرعة`, minutes: b, questions: qCount(sec, b) },
+              { text: 'سجّل كل خطأ في دفتر الأخطاء مع سببه', minutes: c }
+            ];
+          } else if (phase === 'practice') {
+            const a = round5(dailyMin * 0.15), b = round5(dailyMin * 0.6), c = round5(dailyMin * 0.25);
+            tasks = [
+              { text: `راجع ملخص «${label}» وأخطاءك السابقة فيها`, minutes: a },
+              { text: `حل أسئلة على «${label}» بوقت محدد`, minutes: b, questions: qCount(sec, b) },
+              { text: 'أعد حل الأسئلة التي أخطأت فيها دون النظر للحل', minutes: c }
+            ];
+          } else {
+            const b = round5(dailyMin * 0.7), c = round5(dailyMin * 0.3);
+            tasks = [
+              { text: `حل أسئلة متنوعة من القسم ${secLabel[sec]} بوقت محدد، مع تركيز على «${label}»`, minutes: b, questions: qCount(sec, b) },
+              { text: 'راجع أخطاءك وحدّد نمطها: سرعة، أم فهم، أم سهو', minutes: c }
+            ];
+          }
+          day = { type: 'study', phase, section: sec, skill: sk, title: label, minutes: dailyMin, tasks, tip: sk ? SKILL_TIPS[sk] : '' };
+        }
+      }
+      day.date = date; day.weekday = WEEKDAYS[wd];
+      day.sectionLabel = secLabel[day.section];
+      day.phaseLabel = PHASES[day.phase];
+      day.questions = day.tasks.reduce((s, t) => s + (t.questions || 0), 0);
+      totalMinutes += day.minutes; totalQuestions += day.questions;
+      days.push(day);
+      n++;
+    });
+    if (!truncated) {
+      const examDate = addDaysISO(today, daysLeft);
+      days.push({ date: examDate, weekday: WEEKDAYS[weekdayOf(examDate)], type: 'exam', title: 'يوم الاختبار', tasks: [
+        { text: 'تناول فطورًا خفيفًا واحضر قبل الموعد بوقت كافٍ' },
+        { text: 'لا تتوقف طويلًا عند سؤال صعب؛ تجاوزه وارجع له في الأخير' }
+      ] });
+    }
+
+    // تجميع الأسابيع
+    const weeks = [];
+    days.forEach((d, i) => {
+      const w = Math.floor(i / 7);
+      (weeks[w] = weeks[w] || { index: w + 1, days: [] }).days.push(d);
+    });
+    weeks.forEach(w => {
+      w.start = w.days[0].date; w.end = w.days[w.days.length - 1].date;
+      w.studyDays = w.days.filter(d => d.type === 'study').length;
+      w.minutes = w.days.reduce((s, d) => s + (d.minutes || 0), 0);
+      w.questions = w.days.reduce((s, d) => s + (d.questions || 0), 0);
+    });
+
+    // نطاقات المراحل للعرض
+    const phases = [];
+    days.filter(d => d.type === 'study').forEach(d => {
+      const last = phases[phases.length - 1];
+      if (last && last.key === d.phase) { last.end = d.date; last.days++; }
+      else phases.push({ key: d.phase, label: PHASES[d.phase], start: d.date, end: d.date, days: 1 });
+    });
+
+    return {
+      today, daysLeft, mode: base.mode, modeLabel: base.modeLabel, truncated, horizon, maxDays,
+      dailyMin, daysPerWeek: perWeek, split: base.split, priorities: base.priorities,
+      days, weeks, phases,
+      totals: { studyDays: days.filter(d => d.type === 'study').length, minutes: totalMinutes, questions: totalQuestions, testDays },
+      skillSessions,
+      notes: base.notes
+    };
+  }
+
   return {
     mulberry32, shuffle, validateQuestion, optionsOf, eligibleQuestions, poolSummary, sectionPools,
     sampleSection, buildAttempt, recordAnswer, unansweredIndexes, scoreAttempt, levelFor,
-    parseISODate, todayISO, daysBetween, validateProfile, generatePlan, WEEKDAYS
+    parseISODate, todayISO, daysBetween, validateProfile, generatePlan, generateDetailedPlan, addDaysISO, SKILL_TIPS, WEEKDAYS
   };
 });

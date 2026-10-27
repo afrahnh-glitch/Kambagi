@@ -36,6 +36,8 @@ def common(page, where):
     check(not off, f'عناصر خارج الشاشة في {where}: {off}')
     check(page.evaluate('document.documentElement.dir') == 'rtl', f'الاتجاه ليس RTL في {where}')
     check(page.locator('.credit').inner_text().strip() == CREDIT, f'عبارة الحقوق غير مطابقة في {where}')
+    check(page.locator('.credit-school').inner_text().strip() == 'الثانوية الثانية في عنيزة', f'اسم المدرسة في {where}')
+    check('المجانية' not in page.locator('main').inner_text() or 'بنوك المفكر' in page.locator('main').inner_text(), f'كلمة المجانية في {where}')
     no_overflow(page, where)
     body = page.locator('body').inner_text()
     for bad in ['واتساب', 'whatsapp', '@', 'هاتف:', 'تويتر', 'تيك توك', 'سناب']:
@@ -180,13 +182,20 @@ def run(device, prefix):
         page.screenshot(path=f'{SHOTS}/{prefix}-10-plan.png', full_page=True)
 
         # 8) الخطة التفصيلية
-        page.click('#dp-btn'); page.wait_for_selector('.modal')
-        mt = page.locator('.modal').inner_text()
-        check('تفعيل آلية الطلب من المطوّرة' in mt, 'نافذة الخطة التفصيلية')
-        check(page.locator('.modal a, .modal [href]').count() == 0, 'لا روابط في النافذة')
-        page.screenshot(path=f'{SHOTS}/{prefix}-11-detailed-modal.png')
-        page.click('.modal [data-act="0"]')
-        check(page.locator('.sessions').count() == 1, 'الخطة باقية بعد إغلاق النافذة')
+        page.click('#dp-btn'); page.wait_for_selector('.week')
+        check(page.url.endswith('#/plan/detailed'), 'فتح صفحة الخطة التفصيلية')
+        dtxt = page.locator('main').text_content()
+        check('خطتك التفصيلية' in dtxt and 'الأسبوع 1' in dtxt and 'يوم الاختبار' in dtxt, 'محتوى الخطة التفصيلية')
+        check(page.locator('.modal').count() == 0, 'لا نافذة طلب')
+        first = page.locator('.dday:not(.rest) input[data-done]').first
+        first.check(); page.wait_for_timeout(100)
+        check(page.locator('#dp-count').inner_text().startswith('1 من'), 'تتبع إنجاز الأيام')
+        common(page, 'الخطة التفصيلية')
+        page.screenshot(path=f'{SHOTS}/{prefix}-11-detailed-plan.png', full_page=True)
+        page.reload(); page.wait_for_selector('.week')
+        check(page.locator('input[data-done]:checked').count() == 1, 'حفظ الإنجاز بعد إعادة التحميل')
+        page.goto(BASE + '#/plan'); page.wait_for_selector('.sessions')
+        check(page.locator('.sessions').count() == 1, 'الخطة المختصرة باقية')
 
         # التنقل وإعادة التحميل لا يفقد النتيجة
         page.goto(BASE + '#/result'); page.reload(); page.wait_for_selector('.score-hero')

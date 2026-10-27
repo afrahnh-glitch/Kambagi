@@ -202,4 +202,51 @@ test('تفضيل البدء بقسم يحدد أول جلسة', () => {
   assert.equal(E.generatePlan(r, { ...base, startPref: 'quant' }, { today: '2026-10-25' }).sessions[0].section, 'quant');
 });
 
+test('الخطة التفصيلية: أيام متتالية، مراحل، اختبارات دورية، ومراجعة خفيفة قبل الاختبار', () => {
+  const r = resultWith(0.3, 0.8);
+  const base = { hoursPerDay: 1.5, daysPerWeek: 5, targetScore: 85, currentScore: '' };
+  const cases = [['2026-12-20', 'staged'], ['2026-11-15', 'focused'], ['2026-10-29', 'intense'], ['2026-10-26', 'intense'], ['2026-10-25', 'today']];
+  for (const [examDate, mode] of cases) {
+    const p = E.generateDetailedPlan(r, { ...base, examDate }, { today: '2026-10-25', skills: bank.skills });
+    assert.equal(p.mode, mode, examDate);
+    // تواريخ متتالية بلا فجوات، تبدأ اليوم وتنتهي بيوم الاختبار
+    p.days.forEach((d, i) => assert.equal(d.date, E.addDaysISO('2026-10-25', i), examDate + ' تاريخ'));
+    assert.equal(p.days[p.days.length - 1].type, 'exam');
+    assert.equal(p.days[p.days.length - 1].date, examDate);
+    const study = p.days.filter(d => d.type === 'study');
+    if (mode !== 'today' && p.daysLeft >= 1) {
+      const eve = p.days[p.days.length - 2];
+      if (study.length > 1) assert.equal(eve.phase, 'review', examDate + ' مراجعة خفيفة');
+    }
+    study.forEach(d => {
+      assert.ok(d.tasks.length >= 2);
+      const sum = d.tasks.reduce((s, t) => s + (t.minutes || 0), 0);
+      assert.ok(Math.abs(sum - d.minutes) <= 10, 'مجموع المهام ' + sum + ' مقابل ' + d.minutes);
+      if (d.skill) assert.ok(bank.skills[d.skill] && bank.skills[d.skill].section === d.section);
+    });
+    assert.equal(p.totals.studyDays, study.length);
+    assert.equal(p.totals.questions, study.reduce((s, d) => s + d.questions, 0));
+  }
+  const far = E.generateDetailedPlan(r, { ...base, examDate: '2026-12-20' }, { today: '2026-10-25', skills: bank.skills });
+  same(far.phases.map(x => x.key), ['foundation', 'practice', 'simulation', 'review']);
+  assert.ok(far.totals.testDays >= 4, 'اختبارات دورية');
+  // أيام المذاكرة الأسبوعية = 5 (من الأحد إلى الخميس) عدا يوم المراجعة قبل الاختبار
+  const fullWeek = far.days.slice(0, 7).filter(d => d.type === 'study');
+  assert.equal(fullWeek.length, 5);
+  assert.ok(fullWeek.every(d => !['الجمعة', 'السبت'].includes(d.weekday)));
+  // القسم الأضعف (الكمي هنا) يأخذ جلسات أكثر، والمهارات الضعيفة تتكرر أكثر
+  const sk = far.days.filter(d => d.type === 'study' && d.skill);
+  const qn = sk.filter(d => d.section === 'quant').length, vn = sk.filter(d => d.section === 'verbal').length;
+  assert.ok(qn > vn, `الكمي ${qn} واللفظي ${vn}`);
+  const needs = r.skills.filter(s => s.status === 'needs' && s.section === 'quant').map(s => s.key);
+  const good = r.skills.filter(s => s.status === 'good' && s.section === 'quant').map(s => s.key);
+  if (needs.length && good.length) assert.ok(Math.min(...needs.map(k => far.skillSessions[k] || 0)) >= Math.max(...good.map(k => far.skillSessions[k] || 0)));
+  // الاقتطاع عند الموعد البعيد
+  const veryFar = E.generateDetailedPlan(r, { ...base, examDate: '2027-06-01' }, { today: '2026-10-25', skills: bank.skills, maxDays: 56 });
+  assert.ok(veryFar.truncated); assert.equal(veryFar.days.length, 56); assert.ok(veryFar.days.every(d => d.type !== 'exam'));
+  // سبعة أيام في الأسبوع
+  const all7 = E.generateDetailedPlan(r, { ...base, daysPerWeek: 7, examDate: '2026-12-20' }, { today: '2026-10-25', skills: bank.skills });
+  assert.equal(all7.days.filter(d => d.type === 'rest').length, 0);
+});
+
 console.log(`\n${passed} اختبارًا ناجحًا`);

@@ -19,7 +19,7 @@
   B.questions.forEach(q => { byId[q.id] = q; });
 
   // ---------- التخزين المحلي ----------
-  const fresh = () => ({ v: 1, attempt: null, profile: null, prefs: {} });
+  const fresh = () => ({ v: 1, attempt: null, profile: null, prefs: {}, planDone: null });
   let storageOk = true;
   function load() {
     try {
@@ -143,7 +143,7 @@ const figHtml = q => q.figure ? `<figure class="q-fig"><img src="${esc(q.figure)
   const routes = {
     '': renderHome, 'start': renderStart, 'quiz': renderQuiz, 'review': renderReview,
     'result': renderResult, 'analysis': renderAnalysis, 'answers': renderAnswers,
-    'plan': renderPlan, 'plan/edit': renderPlanForm, 'retake': renderRetake
+    'plan': renderPlan, 'plan/edit': renderPlanForm, 'plan/detailed': renderDetailedPlan, 'retake': renderRetake
   };
   function route() {
     const path = location.hash.replace(/^#\/?/, '');
@@ -180,7 +180,7 @@ const figHtml = q => q.figure ? `<figure class="q-fig"><img src="${esc(q.figure)
       <div class="features">
         <div class="feature"><div class="feature-num">1</div><div><h3>اختبر مستواك</h3><p>أسئلة كمية ولفظية، سؤال واحد في كل شاشة.</p></div></div>
         <div class="feature"><div class="feature-num">2</div><div><h3>اكتشف نقاط ضعفك</h3><p>تحليل لكل قسم ولكل مهارة اختُبرت بأسئلة كافية.</p></div></div>
-        <div class="feature"><div class="feature-num">3</div><div><h3>احصل على خطة مذاكرة مختصرة</h3><p>جدول أسبوعي يناسب موعد اختبارك ووقتك المتاح.</p></div></div>
+        <div class="feature"><div class="feature-num">3</div><div><h3>احصل على خطة مذاكرة مختصرة</h3><p>جدول أسبوعي، وخطة يومية تفصيلية حتى موعد اختبارك.</p></div></div>
       </div>
       <div class="note"><strong>تنويه:</strong> هذا اختبار تدريبي تشخيصي، وليس اختبارًا رسميًا ولا بديلًا عن اختبار القدرات الفعلي، ولا يتنبأ بدرجتك الرسمية. مجاني، دون تسجيل دخول، ولا نطلب أي بيانات شخصية.</div>`;
   }
@@ -475,7 +475,7 @@ const figHtml = q => q.figure ? `<figure class="q-fig"><img src="${esc(q.figure)
         <a class="btn btn-primary" href="#/analysis">تحليل المهارات</a>
         <a class="btn btn-ghost" href="#/answers">مراجعة الإجابات والشرح</a>
       </div>
-      <a class="btn btn-gold btn-block" style="margin-top:10px" href="#/plan">احصل على خطتك المجانية</a>
+      <a class="btn btn-gold btn-block" style="margin-top:10px" href="#/plan">احصل على خطتك</a>
       <p class="center" style="margin-top:10px"><a href="#/retake">إعادة الاختبار</a></p>`;
     animateBars();
   }
@@ -514,7 +514,7 @@ const figHtml = q => q.figure ? `<figure class="q-fig"><img src="${esc(q.figure)
         ${Object.values(r.sections).map(s => `<div class="sec-row"><div class="top"><span>${esc(s.label)}</span><span class="num">${pct(s.pct)}</span></div><div class="bar ${s.key === 'verbal' ? 'gold' : ''}"><i style="width:0" data-w="${pct(s.pct)}"></i></div></div>`).join('')}
       </div>
       ${sectionBlock('quant')}${sectionBlock('verbal')}
-      <a class="btn btn-gold btn-block" href="#/plan" style="margin-top:8px">احصل على خطتك المجانية</a>`;
+      <a class="btn btn-gold btn-block" href="#/plan" style="margin-top:8px">احصل على خطتك</a>`;
     animateBars();
   }
 
@@ -572,13 +572,13 @@ const figHtml = q => q.figure ? `<figure class="q-fig"><img src="${esc(q.figure)
             <p class="src-line">${sourceTxt(q)}</p>
           </article>`;
         }).join('')}
-        <a class="btn btn-gold btn-block" href="#/plan">احصل على خطتك المجانية</a>`;
+        <a class="btn btn-gold btn-block" href="#/plan">احصل على خطتك</a>`;
       app.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { filter = b.dataset.f; draw(); }));
     }
     draw();
   }
 
-  // 7) الخطة المجانية
+  // 7) الخطة المختصرة
   function renderPlanForm() {
     document.title = 'بيانات الخطة — كم باقي على هدفك؟';
     if (!needResult()) return;
@@ -590,7 +590,7 @@ const figHtml = q => q.figure ? `<figure class="q-fig"><img src="${esc(q.figure)
     let errors = {};
     function draw() {
       app.innerHTML = `
-        <h1>${editing ? 'تعديل بيانات الخطة' : 'لنجهّز خطتك المجانية'}</h1>
+        <h1>${editing ? 'تعديل بيانات الخطة' : 'لنجهّز خطتك'}</h1>
         ${subnav('plan')}
         <div class="note">لا نطلب اسمًا ولا رقم هاتف. تُحفظ هذه البيانات على جهازك فقط لتُستخدم في خطتك.</div>
         <form class="card enter" id="pf" novalidate>
@@ -631,7 +631,7 @@ const figHtml = q => q.figure ? `<figure class="q-fig"><img src="${esc(q.figure)
               ${[['none', 'بلا تفضيل'], ['quant', 'الكمي'], ['verbal', 'اللفظي']].map(([k, l]) => `<button type="button" data-sp="${k}" aria-pressed="${(p.startPref || 'none') === k}">${l}</button>`).join('')}
             </div>
           </div>
-          <button class="btn btn-gold btn-block" type="submit">${editing ? 'حدّث خطتي' : 'أنشئ خطتي المجانية'}</button>
+          <button class="btn btn-gold btn-block" type="submit">${editing ? 'حدّث خطتي' : 'أنشئ خطتي'}</button>
           ${editing ? '<p class="center" style="margin:10px 0 0"><a href="#/plan">إلغاء التعديل</a></p>' : ''}
         </form>`;
       const f = app.querySelector('#pf');
@@ -655,20 +655,20 @@ const figHtml = q => q.figure ? `<figure class="q-fig"><img src="${esc(q.figure)
         state.profile = { examDate: p.examDate, hoursPerDay: Number(p.hoursPerDay), daysPerWeek: Number(p.daysPerWeek),
           currentScore: p.currentScore === '' ? '' : Number(p.currentScore), targetScore: Number(p.targetScore), startPref: p.startPref || 'none' };
         save();
-        withLoading('جارٍ إعداد خطتك…', () => { go('#/plan'); toast(editing ? 'تم تحديث خطتك.' : 'تم إنشاء خطتك المجانية.', 'success'); }, 500);
+        withLoading('جارٍ إعداد خطتك…', () => { go('#/plan'); toast(editing ? 'تم تحديث خطتك.' : 'تم إنشاء خطتك.', 'success'); }, 500);
       });
     }
     draw();
   }
 
   function renderPlan() {
-    document.title = 'خطتي المجانية — كم باقي على هدفك؟';
+    document.title = 'خطتي — كم باقي على هدفك؟';
     if (!needResult()) return;
     if (!state.profile) { renderPlanForm(); return; }
     const today = E.todayISO();
     const perr = E.validateProfile(state.profile, today);
     if (perr.examDate) {
-      app.innerHTML = `<h1>خطتي المجانية</h1>${subnav('plan')}<div class="card empty"><div class="icon">!</div><h2>موعد الاختبار المحفوظ مضى</h2><p class="muted">حدّث موعد اختبارك لنجهّز لك خطة جديدة.</p><a class="btn btn-primary" href="#/plan/edit">تعديل البيانات</a></div>`;
+      app.innerHTML = `<h1>خطتي</h1>${subnav('plan')}<div class="card empty"><div class="icon">!</div><h2>موعد الاختبار المحفوظ مضى</h2><p class="muted">حدّث موعد اختبارك لنجهّز لك خطة جديدة.</p><a class="btn btn-primary" href="#/plan/edit">تعديل البيانات</a></div>`;
       return;
     }
     const r = result();
@@ -680,7 +680,7 @@ const figHtml = q => q.figure ? `<figure class="q-fig"><img src="${esc(q.figure)
       (r.sections.quant && r.sections.verbal ? ` (الكمي ${pct(r.sections.quant.pct)}، اللفظي ${pct(r.sections.verbal.pct)}).` : '.');
 
     app.innerHTML = `
-      <h1>خطتك المجانية المختصرة</h1>
+      <h1>خطتك المختصرة</h1>
       ${subnav('plan')}
       <div class="card enter">
         ${plan.mode === 'today'
@@ -727,25 +727,98 @@ const figHtml = q => q.figure ? `<figure class="q-fig"><img src="${esc(q.figure)
 
       <section class="detailed" aria-labelledby="dp-title">
         <h2 id="dp-title">تبغى خطة تفصيلية تناسب مستواك؟</h2>
-        <p>صار عندك تصور عن مستواك والمهارات اللي تحتاج تطورها. إذا تبغى خطة مذاكرة يومية مفصلة تناسب درجتك المستهدفة وموعد اختبارك ووقتك المتاح، تقدر تطلب إعداد خطة خاصة لك.</p>
-        <button class="btn btn-gold" id="dp-btn">أرغب في خطة تفصيلية</button>
+        <p>صار عندك تصور عن مستواك والمهارات اللي تحتاج تطورها. تقدر الآن تحصل مجانًا على خطة مذاكرة يومية مفصلة: لكل يوم من اليوم حتى موعد اختبارك مهارة محددة، ومهام بالدقائق، وعدد أسئلة، واختبارات دورية لمتابعة تطورك.</p>
+        <a class="btn btn-gold" id="dp-btn" href="#/plan/detailed">أرغب في خطة تفصيلية</a>
       </section>`;
-
-    app.querySelector('#dp-btn').addEventListener('click', openDetailedPlan);
   }
 
-  function openDetailedPlan() {
-    const dp = C.detailedPlan || {};
-    const live = dp.enabled && /^https:\/\//.test(dp.requestUrl || '');
-    const body = `<p>يمكنك طلب خطة تفصيلية مخصصة بناءً على نتائج اختبارك. اتبع التعليمات المتاحة لطلب الخدمة.</p>` +
-      (live
-        ? (dp.instructions ? `<p>${esc(dp.instructions)}</p>` : '')
-        : '<div class="note note-gold" style="margin:0">طلب الخطة التفصيلية يحتاج إلى تفعيل آلية الطلب من المطوّرة، وستتاح هذه الميزة بعد إعدادها.</div>') +
-      '<p class="small muted" style="margin:12px 0 0">نتيجتك وخطتك المجانية محفوظتان ولن تتأثرا.</p>';
-    const actions = live
-      ? [{ label: dp.requestButtonLabel || 'انتقل إلى نموذج الطلب', cls: 'btn-gold', onClick: () => window.open(dp.requestUrl, '_blank', 'noopener') }, { label: 'إغلاق' }]
-      : [{ label: 'حسنًا', cls: 'btn-primary' }];
-    modal({ title: 'طلب خطة تفصيلية', body, actions });
+  // 8) الخطة التفصيلية اليومية
+  function fmtDay(iso, withYear) {
+    const [y, m, d] = iso.split('-').map(Number);
+    try { return new Date(y, m - 1, d).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', withYear ? { day: 'numeric', month: 'long', year: 'numeric' } : { day: 'numeric', month: 'long' }); }
+    catch (e) { return iso; }
+  }
+  function renderDetailedPlan() {
+    document.title = 'خطتي التفصيلية — كم باقي على هدفك؟';
+    if (!needResult()) return;
+    if (!state.profile) { go('#/plan'); return; }
+    const today = E.todayISO();
+    if (E.validateProfile(state.profile, today).examDate) { go('#/plan'); return; }
+    const r = result();
+    const plan = E.generateDetailedPlan(r, state.profile, { today, skills: B.skills, maxDays: C.detailedPlanMaxDays });
+    const key = state.attempt.id + '|' + state.profile.examDate;
+    if (!state.planDone || state.planDone.key !== key) { state.planDone = { key, days: {} }; save(); }
+    const done = state.planDone.days;
+    const studyDays = plan.days.filter(d => d.type === 'study');
+    const doneCount = studyDays.filter(d => done[d.date]).length;
+    const hours = Math.round(plan.totals.minutes / 60);
+    const phaseHtml = plan.phases.length ? `
+      <div class="phase-bar" role="img" aria-label="مراحل الخطة">${plan.phases.map(p => `<div class="ph-${p.key}" style="width:${(p.days / studyDays.length) * 100}%">${p.days >= 3 ? esc(p.label) : ''}</div>`).join('')}</div>
+      <ul class="phase-legend">${plan.phases.map(p => `<li><i class="ph-${p.key}"></i><strong>${esc(p.label)}</strong> · ${esc(fmtDay(p.start))}${p.start !== p.end ? ' – ' + esc(fmtDay(p.end)) : ''} · ${esc(plan.days.length && p.days === 1 ? 'جلسة واحدة' : p.days === 2 ? 'جلستان' : p.days + (p.days <= 10 ? ' جلسات' : ' جلسة'))}</li>`).join('')}</ul>` : '';
+    const dayHtml = d => {
+      if (d.type === 'rest') return `<div class="dday rest">${esc(d.weekday)} ${esc(fmtDay(d.date))} · راحة</div>`;
+      if (d.type === 'exam') return `<div class="dday exam"><div class="dhead"><span class="ddate">${esc(d.weekday)} ${esc(fmtDay(d.date))}</span><span class="tag">يوم الاختبار</span></div>
+        <ul class="tasks">${d.tasks.map(t => `<li><span>${esc(t.text)}</span></li>`).join('')}</ul><p style="margin:6px 0 0;font-weight:800">بالتوفيق!</p></div>`;
+      const cls = d.isTest ? 'test' : d.phase === 'review' ? 'review' : '';
+      return `<div class="dday ${cls} ${done[d.date] ? 'done' : ''}">
+        <div class="dhead"><span class="ddate">${esc(d.weekday)} ${esc(fmtDay(d.date))}</span>
+          <span class="dtags"><span class="tag">${esc(d.phaseLabel)}</span><span class="tag">${esc(d.sectionLabel)} · ${esc(durTxt(d.minutes))}</span></span></div>
+        <div class="dtitle">${esc(d.title)}</div>
+        <ul class="tasks">${d.tasks.map(t => `<li><span>${esc(t.text)}${t.questions ? ` <span class="q">(${t.questions} سؤالًا تقريبًا)</span>` : ''}</span><span>${t.minutes ? esc(durTxt(t.minutes)) : ''}</span></li>`).join('')}</ul>
+        ${d.tip ? `<div class="tip"><strong>نصيحة:</strong> ${esc(d.tip)}</div>` : ''}
+        <label class="check donebox"><input type="checkbox" data-done="${esc(d.date)}" ${done[d.date] ? 'checked' : ''}> <span>أنجزت مهام هذا اليوم</span></label>
+      </div>`;
+    };
+    app.innerHTML = `
+      <h1>خطتك التفصيلية</h1>
+      ${subnav('plan')}
+      <div class="card enter">
+        ${plan.mode === 'today'
+          ? '<div class="countdown"><b>اليوم</b><span>موعد اختبارك</span></div>'
+          : `<div class="countdown"><span>باقي</span><b>${plan.daysLeft}</b><span>${plan.daysLeft === 1 ? 'يوم واحد' : plan.daysLeft === 2 ? 'يومان' : plan.daysLeft <= 10 ? 'أيام' : 'يومًا'} على اختبارك · ${esc(fmtDay(E.addDaysISO(today, plan.daysLeft), true))}</span></div>`}
+        <div class="dp-stats">
+          <div class="stat"><b>${studyDays.length}</b><span>يوم مذاكرة</span></div>
+          <div class="stat"><b>${hours}</b><span>ساعة تقريبًا</span></div>
+          <div class="stat"><b>${plan.totals.questions}</b><span>سؤالًا تدريبيًا</span></div>
+          <div class="stat"><b>${plan.totals.testDays}</b><span>اختبار دوري</span></div>
+        </div>
+      </div>
+      ${plan.truncated ? `<div class="note note-gold">تعرض الخطة أول ${Math.round(plan.maxDays / 7)} أسابيع. أعد اختبار تحديد المستوى في نهايتها لتحصل على خطة جديدة مبنية على تطورك.</div>` : ''}
+      ${phaseHtml ? `<h2 class="section-title">مراحل الخطة</h2><div class="card">${phaseHtml}</div>` : ''}
+      ${studyDays.length ? `<h2 class="section-title">تقدّمك</h2>
+      <div class="card"><div class="dp-progress"><div class="bar"><i id="dp-bar" style="width:${(doneCount / studyDays.length) * 100}%"></i></div><span class="num" id="dp-count">${doneCount} من ${studyDays.length}</span></div>
+      <p class="small muted" style="margin:8px 0 0">علّم كل يوم تنجزه، ويُحفظ تقدمك على جهازك.</p></div>` : ''}
+      <h2 class="section-title">الجدول اليومي</h2>
+      ${plan.weeks.map((w, i) => `<details class="week" ${i === 0 ? 'open' : ''}>
+        <summary><span class="wk-title">الأسبوع ${w.index}</span><span class="wk-meta">${esc(fmtDay(w.start))} – ${esc(fmtDay(w.end))} · ${w.studyDays} ${w.studyDays === 1 ? 'جلسة' : w.studyDays === 2 ? 'جلستان' : w.studyDays <= 10 ? 'جلسات' : 'جلسة'}${w.questions ? ` · ${w.questions} سؤالًا` : ''}</span></summary>
+        <div class="days">${w.days.map(dayHtml).join('')}</div>
+      </details>`).join('')}
+      <h2 class="section-title">قواعد تساعدك على الالتزام</h2>
+      <div class="card"><ul class="recs">
+        <li>ابدأ الجلسة بالمهمة الأصعب وأنت في أعلى تركيز.</li>
+        <li>خصّص دفترًا للأخطاء، واكتب فيه السؤال وسبب الخطأ والطريقة الصحيحة.</li>
+        <li>إذا فاتك يوم، لا تضاعف اليوم التالي؛ أكمل الجدول من مكانك.</li>
+        <li>بعد كل اختبار دوري، أعد إدخال بياناتك واختبارك لتتحدث الخطة حسب مستواك الجديد.</li>
+      </ul></div>
+      ${plan.notes.map(n => `<div class="note">${esc(n)}</div>`).join('')}
+      <div class="btn-row">
+        <button class="btn btn-primary" id="dp-print">طباعة الخطة أو حفظها PDF</button>
+        <a class="btn btn-ghost" href="#/plan">الخطة المختصرة</a>
+        <a class="btn btn-ghost" href="#/plan/edit">تعديل بياناتي</a>
+      </div>`;
+    app.querySelectorAll('[data-done]').forEach(cb => cb.addEventListener('change', () => {
+      if (cb.checked) done[cb.dataset.done] = true; else delete done[cb.dataset.done];
+      save();
+      cb.closest('.dday').classList.toggle('done', cb.checked);
+      const c = studyDays.filter(d => done[d.date]).length;
+      app.querySelector('#dp-count').textContent = c + ' من ' + studyDays.length;
+      app.querySelector('#dp-bar').style.width = (c / studyDays.length) * 100 + '%';
+      if (c === studyDays.length) toast('أنجزت خطتك كاملة. بالتوفيق في اختبارك!', 'success');
+    }));
+    app.querySelector('#dp-print').addEventListener('click', () => {
+      app.querySelectorAll('details.week').forEach(d => { d.open = true; });
+      window.print();
+    });
   }
 
   // 9) إعادة الاختبار وحذف البيانات
